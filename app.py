@@ -218,7 +218,7 @@ st.markdown(
     """
     <br><br>
     <center style="color:white;font-size:16px;">
-    ❤️ Made with Streamlit & Machine Learning
+    ❤️ with Natural Language Processing
     </center>
     """,
     unsafe_allow_html=True
