@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import pickle
 import os
-
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -65,9 +64,11 @@ background:rgba(255,255,255,0.18);
 background:linear-gradient(90deg,#ff512f,#dd2476);
 color:white;
 font-size:18px;
+font-weight:bold;
 border:none;
 border-radius:12px;
 padding:12px 30px;
+transition:0.3s;
 }
 
 .stButton>button:hover{
@@ -77,9 +78,17 @@ transform:scale(1.05);
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='big-title'>🎬 AI Movie Recommender System</div>", unsafe_allow_html=True)
+# ---------------- Title ----------------
 
-st.markdown("<div class='subtitle'>Find movies similar to your favourite movie using Machine Learning</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div class='big-title'>🎬 Movie Recommender System</div>",
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    "<div class='subtitle'>Find movies similar to your favourite movie using NLP</div>",
+    unsafe_allow_html=True
+)
 
 # ---------------- Dataset ----------------
 
@@ -87,52 +96,50 @@ df = pd.read_csv("cleaned_data.csv")
 
 # ---------------- Similarity ----------------
 
-if not os.path.exists("similarity.pkl"):
+if os.path.exists("similarity.pkl"):
 
-    st.warning("Similarity file not found.")
+    similarities = pickle.load(open("similarity.pkl", "rb"))
 
-    if st.button("Generate Similarity Matrix"):
+else:
 
-        with st.spinner("Training AI..."):
+    st.info("Generating similarity matrix for the first time...")
 
-            cv = CountVectorizer(
-                max_features=10000,
-                stop_words="english"
-            )
+    with st.spinner("Training AI..."):
 
-            vector = cv.fit_transform(df["tags"]).toarray()
+        cv = CountVectorizer(
+            max_features=10000,
+            stop_words="english"
+        )
 
-            similarities = cosine_similarity(vector)
+        vector = cv.fit_transform(df["tags"]).toarray()
 
-            pickle.dump(similarities, open("similarity.pkl", "wb"))
+        similarities = cosine_similarity(vector)
 
-        st.success("Similarity Matrix Generated Successfully!")
+        pickle.dump(similarities, open("similarity.pkl", "wb"))
 
-similarities = pickle.load(open("similarity.pkl", "rb"))
+    st.success("Similarity Matrix Generated Successfully!")
 
-movies = df["title"].tolist()
+# ---------------- Movie List ----------------
 
-# ---------------- Select Movie ----------------
+movies = sorted(df["title"].tolist())
 
 st.markdown("## 🎥 Choose a Movie")
 
-name = st.selectbox(
-    "",
-    movies
-)
+name = st.selectbox("", movies)
 
 # ---------------- Functions ----------------
 
 def get_name_by_index(i):
 
-    if i >= 0 and i < len(df):
+    if 0 <= i < len(df):
         return df.loc[i, "title"]
+
     return ""
 
 
 def get_index_from_name(name):
 
-    clean_user_name = (
+    clean_name = (
         name.strip()
         .lower()
         .replace(" ", "")
@@ -142,9 +149,9 @@ def get_index_from_name(name):
     match = df[
         df["title"]
         .str.lower()
-        .str.replace(" ", "")
-        .str.replace("-", "")
-        == clean_user_name
+        .str.replace(" ", "", regex=False)
+        .str.replace("-", "", regex=False)
+        == clean_name
     ]
 
     if not match.empty:
@@ -152,7 +159,7 @@ def get_index_from_name(name):
 
     return -1
 
-# ---------------- Recommendation ----------------
+# ---------------- Recommend ----------------
 
 if st.button("🚀 Recommend Movies"):
 
@@ -169,7 +176,9 @@ if st.button("🚀 Recommend Movies"):
         for i in range(100):
             progress.progress(i + 1)
 
-        st.success(f"Top recommendations for **{name}**")
+        progress.empty()
+
+        st.success(f"Top 5 Recommendations for **{name}**")
 
         similarity_indexes = list(enumerate(similarities[index]))
 
@@ -187,16 +196,13 @@ if st.button("🚀 Recommend Movies"):
 
             movie = get_name_by_index(similarity_indexes[i][0])
 
-            score = similarity_indexes[i][1]
-
             html = f"""
             <div class='movie-card'>
-            <h3>🎬 {movie}</h3>
-            <p>⭐ Similarity Score : {score:.2f}</p>
+                <h3>🎬 {movie}</h3>
             </div>
             """
 
-            if count % 2:
+            if count % 2 == 1:
 
                 with col1:
                     st.markdown(html, unsafe_allow_html=True)
@@ -208,4 +214,12 @@ if st.button("🚀 Recommend Movies"):
 
             count += 1
 
-st.markdown("<br><center>Made with ❤️ using Streamlit & Machine Learning</center>", unsafe_allow_html=True)
+st.markdown(
+    """
+    <br><br>
+    <center style="color:white;font-size:16px;">
+    ❤️ Made with Streamlit & Machine Learning
+    </center>
+    """,
+    unsafe_allow_html=True
+)
